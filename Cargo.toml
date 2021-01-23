@@ -1,0 +1,9 @@
+[package]
+name = "wpconvert"
+version = "0.0.1"
+authors = ["Kevin Quillen"]
+edition = "2018"
+
+[dependencies]
+structopt = "0.3"
+csv = "1.1.5"
