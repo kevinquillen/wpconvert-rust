@@ -4,6 +4,7 @@ use structopt::StructOpt;
 use std::path::{Path, PathBuf};
 use csv::{ReaderBuilder, WriterBuilder};
 use std::ffi::OsStr;
+use regex::Regex;
 
 #[derive(StructOpt)]
 pub struct Opt {
@@ -45,17 +46,42 @@ fn main() -> Result<(), csv::Error> {
     let headers: Vec<_> = reader.headers().unwrap().into_iter().collect();
     writer.write_record(headers)?;
 
-    // Write the rows
-    // Here is where the text would be converted, but we should find a way to get
-    // the cells to affect from the user.
     for record in reader.records() {
         let _record = record.unwrap();
-        let row: Vec<_> = _record.into_iter().collect();
+        let mut row: Vec<_> = _record.into_iter().collect();
+
+        // Here is where the text would be converted, but we should find a way to get
+        // the cells to affect from the user.
+        let content = row[1].to_string();
+        let converted = convert(content);
+        row[1] = &converted;
         writer.write_record(&row)?;
     }
 
     writer.flush()?;
     Ok(())
+}
+
+fn convert(mut text: String) -> String {
+    if !text.is_empty() {
+        String::from("");
+    }
+
+    // Wordpress appends this - not sure why.
+    text.push_str("\n");
+
+    let re = Regex::new(r"<br\s*/?>\s*<br\s*/?>").unwrap();
+    text = re.replace_all(&text, "\n\n").to_string();
+
+    let re = Regex::new(r"<(?P<tag>table|thead|tfoot|caption|col|colgroup|tbody|tr|td|th|div|dl|dd|dt|ul|ol|li|pre|form|map|area|blockquote|address|math|style|p|h[1-6]|hr|fieldset|legend|section|article|aside|hgroup|header|footer|nav|figure|figcaption|details|menu|summary)[\s/>]").unwrap();
+    text = re.replace_all(&text, "\n\n<$tag>").to_string();
+    text = re.replace_all(&text, "<$tag>\n\n").to_string();
+
+    text = Regex::new(r"(?P<tag><hr\s*?/?>)").unwrap().replace_all(&text, "$tag\n\n").to_string();
+
+    text = Regex::new(r"(\\r\\n)").unwrap().replace_all(&text, "\n").to_string();
+    text = Regex::new(r"(\\r)").unwrap().replace_all(&text, "\n").to_string();
+    text
 }
 
 /// Crude method to check if the file is a csv file.
